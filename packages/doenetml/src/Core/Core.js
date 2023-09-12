@@ -11166,7 +11166,8 @@ export default class Core {
             event.context = {};
         }
 
-        const payload = {
+        let payload;
+        payload = JSON.stringify({
             activityId: this.activityId,
             activityCid: this.activityCid,
             pageCid: this.cid,
@@ -11186,10 +11187,58 @@ export default class Core {
             ),
             timestamp: new Date().toISOString().slice(0, 19).replace("T", " "),
             version: "0.1.1",
-        };
+        });
+        if (this.apiTemplates.recordEvent) {
+            payload = this.apiTemplates.recordEvent
+                .replace(/DOENET_EVENT_BODY/, payload)
+                .replace(/DOENET_ACTIVITY_ID/, this.activityId)
+                .replace(/DOENET_ATTEMPT_NUMBER/, this.attemptNumber)
+                .replace(/DOENET_ACTIVITY_CID/, this.activityCid)
+                .replace(/DOENET_PAGE_CID/, this.cid)
+                .replace(/DOENET_PAGE_NUMBER/, this.pageNumber)
+                .replace(/DOENET_ATTEMPT_NUMBER/, this.attemptNumber)
+                .replace(
+                    /DOENET_ACTIVITY_VARIANT_INDEX/,
+                    this.activityVariantIndex,
+                )
+                .replace(
+                    /DOENET_PAGE_VARIANT_INDEX/,
+                    this.requestedVariant.index,
+                )
+                .replace(/DOENET_EVENT_VERB/, event.verb)
+                .replace(
+                    /DOENET_EVENT_OBJECT/,
+                    JSON.stringify(event.object, serializedComponentsReplacer),
+                )
+                .replace(
+                    /DOENET_EVENT_RESULT/,
+                    JSON.stringify(
+                        removeFunctionsMathExpressionClass(event.result),
+                        serializedComponentsReplacer,
+                    ),
+                )
+                .replace(
+                    /DOENET_EVENT_CONTEXT/,
+                    JSON.stringify(event.context, serializedComponentsReplacer),
+                )
+                .replace(
+                    /DOENET_TIMESTAMP/,
+                    new Date().toISOString().slice(0, 19).replace("T", " "),
+                )
+                .replace(/DOENET_VERSION/, "0.1.1");
+        }
+
+        console.log("payload for save credit for item", payload);
+
+        // to avoid JSON re-serialization in the templating case
+        const config = { headers: { "Content-Type": "application/json" } };
 
         try {
-            let resp = await axios.post(this.apiURLs.recordEvent, payload);
+            let resp = await axios.post(
+                this.apiURLs.recordEvent,
+                payload,
+                config,
+            );
             // console.log(">>>>resp from record event", resp.data)
         } catch (e) {
             console.error(`Error saving event: ${e.message}`);
@@ -12768,6 +12817,39 @@ export default class Core {
             serverSaveId: this.serverSaveId,
             updateDataOnContentChange: this.updateDataOnContentChange,
         };
+        if (this.apiTemplates.savePageState) {
+            payload = this.apiTemplates.savePageState
+                .replace(
+                    /DOENET_PAGE_STATE_BODY/,
+                    this.pageStateToBeSavedToDatabase,
+                )
+                .replace(/DOENET_ACTIVITY_ID/, this.activityId)
+                .replace(/DOENET_ATTEMPT_NUMBER/, this.attemptNumber)
+                //.replace(/DOENET_ACTIVITY_CID/, this.activityCid)
+                .replace(/DOENET_PAGE_CID/, this.cid)
+                .replace(/DOENET_PAGE_NUMBER/, this.pageNumber)
+                .replace(/DOENET_ATTEMPT_NUMBER/, this.attemptNumber)
+                .replace(/DOENET_SAVE_ID/, saveId)
+                .replace(/DOENET_SERVER_SAVE_ID/, this.serverSaveId);
+            //.replace(/DOENET_ACTIVITY_VARIANT_INDEX/, this.activityVariantIndex)
+            //.replace(/DOENET_PAGE_VARIANT_INDEX/, this.requestedVariant.index)
+            //.replace(/DOENET_EVENT_VERB/, event.verb)
+            /*
+            .replace(/DOENET_EVENT_OBJECT/, JSON.stringify(event.object, serializedComponentsReplacer))
+            .replace(/DOENET_EVENT_RESULT/, JSON.stringify(
+                removeFunctionsMathExpressionClass(event.result),
+                serializedComponentsReplacer,
+            ))
+            .replace(/DOENET_EVENT_CONTEXT/, JSON.stringify(
+                event.context,
+                serializedComponentsReplacer,
+            ))
+            .replace(/DOENET_TIMESTAMP/, new Date().toISOString().slice(0, 19).replace("T", " "))
+            .replace(/DOENET_VERSION/, "0.1.1")
+            */
+        }
+
+        console.log("payload for save credit for item", payload);
 
         // mark presence of changes
         // so that next call to saveChangesToDatabase will save changes
@@ -12814,10 +12896,14 @@ export default class Core {
 
         let resp;
 
+        // to avoid JSON re-serialization in the templating case
+        const config = { headers: { "Content-Type": "application/json" } };
+
         try {
             resp = await axios.post(
                 this.apiURLs.savePageState,
                 this.pageStateToBeSavedToDatabase,
+                config,
             );
         } catch (e) {
             postMessage({
@@ -12928,17 +13014,29 @@ export default class Core {
             return;
         }
 
-        const payload = {
-            activityId: this.activityId,
-            attemptNumber: this.attemptNumber,
-            credit: pageCreditAchieved,
-            itemNumber: this.itemNumber,
-        };
+        let payload;
+        if (this.apiTemplates.saveCreditForItem) {
+            payload = this.apiTemplates.saveCreditForItem
+                .replace(/DOENET_ACTIVITY_ID/, this.activityId)
+                .replace(/DOENET_ATTEMPT_NUMBER/, this.attemptNumber)
+                .replace(/DOENET_PAGE_CREDIT_ACHEIVED/, pageCreditAchieved)
+                .replace(/DOENET_ITEM_NUMBER/, this.itemNumber);
+        } else {
+            payload = JSON.stringify({
+                activityId: this.activityId,
+                attemptNumber: this.attemptNumber,
+                credit: pageCreditAchieved,
+                itemNumber: this.itemNumber,
+            });
+        }
 
         console.log("payload for save credit for item", payload);
 
+        // to avoid JSON re-serialization in the templating case
+        const config = { headers: { "Content-Type": "application/json" } };
+
         axios
-            .post(this.apiURLs.saveCreditForItem, payload)
+            .post(this.apiURLs.saveCreditForItem, payload, config)
             .then((resp) => {
                 // console.log('>>>>saveCreditForItem resp', resp.data);
 
