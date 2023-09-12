@@ -60,6 +60,7 @@ export function PageViewer({
     hideWhenNotCurrent,
     prefixForIds = "",
     apiURLs = {},
+    apiTemplates = {},
     location = {},
     navigate,
     linkSettings = { viewURL: "/portfolioviewer", editURL: "/publiceditor" },
@@ -1141,6 +1142,7 @@ export function PageViewer({
                     ? initialCoreData.current.coreState
                     : undefined,
                 apiURLs: apiURLs,
+                apiTemplates: apiTemplates,
             },
         });
 

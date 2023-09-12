@@ -1391,6 +1391,7 @@ export function ActivityViewer({
                     hideWhenNotCurrent={paginate}
                     prefixForIds={prefixForIds}
                     apiURLs={apiURLs}
+                    apiTemplates={apiTemplates}
                     location={location}
                     navigate={navigate}
                     linkSettings={linkSettings}
