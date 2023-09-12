@@ -46,6 +46,7 @@ export function ActivityViewer({
     setActivityAsCompleted,
     setIsInErrorState,
     apiURLs = {},
+    apiTemplates = {},
     generatedVariantCallback,
     setErrorsAndWarningsCallback,
     forceDisable,
