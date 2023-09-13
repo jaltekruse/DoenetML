@@ -58,6 +58,7 @@ export default class Core {
         coreId,
         updateDataOnContentChange,
         apiURLs = {},
+        apiTemplates = {},
     }) {
         // console.time('core');
 
@@ -71,6 +72,7 @@ export default class Core {
         this.doenetML = doenetML;
         this.cid = cid;
         this.apiURLs = apiURLs;
+        this.apiTemplates = apiTemplates;
 
         this.serverSaveId = serverSaveId;
         this.updateDataOnContentChange = updateDataOnContentChange;
@@ -11228,7 +11230,7 @@ export default class Core {
                 .replace(/DOENET_VERSION/, "0.1.1");
         }
 
-        console.log("payload for save credit for item", payload);
+        console.log("payload for recordEvent", payload);
 
         // to avoid JSON re-serialization in the templating case
         const config = { headers: { "Content-Type": "application/json" } };
@@ -12849,7 +12851,7 @@ export default class Core {
             */
         }
 
-        console.log("payload for save credit for item", payload);
+        console.log("payload for savePageState", payload);
 
         // mark presence of changes
         // so that next call to saveChangesToDatabase will save changes
@@ -12863,6 +12865,7 @@ export default class Core {
         // throttle save to database at 60 seconds
 
         if (!this.changesToBeSaved) {
+            console.log("no changes to save");
             return;
         }
 
@@ -12870,6 +12873,7 @@ export default class Core {
             if (overrideThrottle) {
                 clearTimeout(this.saveStateToDBTimerId);
             } else {
+                console.log("timer set and overrideThrottle is false");
                 return;
             }
         }
