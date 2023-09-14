@@ -74,6 +74,7 @@ export function DoenetML({
     setActivityAsCompleted,
     setIsInErrorState,
     apiURLs,
+    apiTemplates,
     generatedVariantCallback,
     setErrorsAndWarningsCallback,
     forceDisable,
@@ -189,6 +190,7 @@ export function DoenetML({
                         setActivityAsCompleted={setActivityAsCompleted}
                         setIsInErrorState={setIsInErrorState}
                         apiURLs={apiURLs}
+                        apiTemplates={apiTemplates}
                         generatedVariantCallback={generatedVariantCallback}
                         setErrorsAndWarningsCallback={
                             setErrorsAndWarningsCallback
