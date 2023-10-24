@@ -10955,8 +10955,6 @@ export default class Core {
             let itemsSubmitted = [
                 ...new Set(recordItemSubmissions.map((x) => x.itemNumber)),
             ];
-            let pageCreditAchieved =
-                await this.document.stateValues.creditAchieved;
             let itemCreditAchieved =
                 await this.document.stateValues.itemCreditAchieved;
 
@@ -10979,13 +10977,6 @@ export default class Core {
                 }
                 event.context.pageCreditAchieved =
                     await this.document.stateValues.creditAchieved;
-            }
-
-            // if itemNumber is zero, it means this document wasn't given any weight,
-            // so don't record the submission to the attempt tables
-            // (the event will still get recorded)
-            if (this.itemNumber > 0) {
-                this.saveSubmissions({ pageCreditAchieved, suppressToast });
             }
         }
 
@@ -11068,10 +11059,23 @@ export default class Core {
             }
         }
 
-        if (!doNotSave) {
+        let alreadySaved = false;
+        if (recordItemSubmissions.length > 0) {
+            // if itemNumber is zero, it means this document wasn't given any weight,
+            // so don't record the submission to the attempt tables
+            // (the event will still get recorded)
+            if (this.itemNumber > 0) {
+                let pageCreditAchieved =
+                    await this.document.stateValues.creditAchieved;
+                this.saveState(true);
+                //this.saveSubmissions({ pageCreditAchieved, suppressToast });
+                alreadySaved = true;
+            }
+        }
+        if (!alreadySaved && !doNotSave) {
             clearTimeout(this.savePageStateTimeoutID);
 
-            //Debounce the save to database
+            //Debounce the save to localstorage and then to DB with a throttle
             this.savePageStateTimeoutID = setTimeout(() => {
                 this.saveState();
             }, 1000);
@@ -12799,115 +12803,131 @@ export default class Core {
         //   }
         // })
 
-        let resp;
-
-        try {
-            resp = await axios.post(
-                this.apiURLs.savePageState,
-                this.pageStateToBeSavedToDatabase,
-            );
-        } catch (e) {
+        if (this.apiURLs.postMessages) {
             postMessage({
-                messageType: "sendToast",
-                coreId: this.coreId,
-                args: {
-                    message:
-                        "Error synchronizing data.  Changes not saved to the server.",
-                    alertType: "error",
-                },
+                messageType: "saveCreditForItem",
+                state: { ...this.pageStateToBeSavedToDatabase },
+                score: await this.document.stateValues.creditAchieved,
             });
-            return;
-        }
+        } else {
+            let resp;
 
-        console.log("result from saving to database:", resp.data);
+            if (!this.flags.allowSaveSubmissions) {
+                return;
+            }
+            if (this.apiURLs.postMessages) {
+                postMessage({
+                    messageType: "saveCreditForItem",
+                    args: payload,
+                });
+                try {
+                    resp = await axios.post(
+                        this.apiURLs.savePageState,
+                        this.pageStateToBeSavedToDatabase,
+                    );
+                } catch (e) {
+                    postMessage({
+                        messageType: "sendToast",
+                        coreId: this.coreId,
+                        args: {
+                            message:
+                                "Error synchronizing data.  Changes not saved to the server.",
+                            alertType: "error",
+                        },
+                    });
+                    return;
+                }
 
-        if (resp.status === null) {
-            postMessage({
-                messageType: "sendToast",
-                coreId: this.coreId,
-                args: {
-                    message: `Error synchronizing data.  Changes not saved to the server.  Are you connected to the internet?`,
-                    alertType: "error",
-                },
-            });
-            return;
-        }
+                console.log("result from saving to database:", resp.data);
 
-        let data = resp.data;
+                if (resp.status === null) {
+                    postMessage({
+                        messageType: "sendToast",
+                        coreId: this.coreId,
+                        args: {
+                            message: `Error synchronizing data.  Changes not saved to the server.  Are you connected to the internet?`,
+                            alertType: "error",
+                        },
+                    });
+                    return;
+                }
 
-        if (!data.success) {
-            postMessage({
-                messageType: "sendToast",
-                coreId: this.coreId,
-                args: {
-                    message: data.message,
-                    alertType: "error",
-                },
-            });
-            return;
-        }
+                let data = resp.data;
 
-        this.serverSaveId = data.saveId;
+                if (!data.success) {
+                    postMessage({
+                        messageType: "sendToast",
+                        coreId: this.coreId,
+                        args: {
+                            message: data.message,
+                            alertType: "error",
+                        },
+                    });
+                    return;
+                }
 
-        if (this.flags.allowLocalState) {
-            await idb_set(
-                `${this.activityId}|${this.pageNumber}|${this.attemptNumber}|${this.cid}|ServerSaveId`,
-                data.saveId,
-            );
-        }
+                this.serverSaveId = data.saveId;
 
-        if (data.stateOverwritten) {
-            // if a new attempt number was generated or the cid didn't change,
-            // then we reset the page to the new state
-            if (
-                this.attemptNumber !== Number(data.attemptNumber) ||
-                this.cid === data.cid
-            ) {
                 if (this.flags.allowLocalState) {
                     await idb_set(
-                        `${this.activityId}|${this.pageNumber}|${data.attemptNumber}|${data.cid}`,
-                        {
-                            coreState: JSON.parse(
-                                data.coreState,
-                                serializedComponentsReviver,
-                            ),
-                            rendererState: JSON.parse(
-                                data.rendererState,
-                                serializedComponentsReviver,
-                            ),
-                            coreInfo: JSON.parse(
-                                data.coreInfo,
-                                serializedComponentsReviver,
-                            ),
-                            saveId: data.saveId,
-                        },
+                        `${this.activityId}|${this.pageNumber}|${this.attemptNumber}|${this.cid}|ServerSaveId`,
+                        data.saveId,
                     );
                 }
 
-                postMessage({
-                    messageType: "resetPage",
-                    coreId: this.coreId,
-                    args: {
-                        changedOnDevice: data.device,
-                        newCid: data.cid,
-                        newAttemptNumber: Number(data.attemptNumber),
-                    },
-                });
-            } else {
-                // if the cid changed without the attemptNumber changing, something went wrong
-                postMessage({
-                    messageType: "inErrorState",
-                    coreId: this.coreId,
-                    args: {
-                        errMsg: "Content changed unexpectedly!",
-                    },
-                });
+                if (data.stateOverwritten) {
+                    // if a new attempt number was generated or the cid didn't change,
+                    // then we reset the page to the new state
+                    if (
+                        this.attemptNumber !== Number(data.attemptNumber) ||
+                        this.cid === data.cid
+                    ) {
+                        if (this.flags.allowLocalState) {
+                            await idb_set(
+                                `${this.activityId}|${this.pageNumber}|${data.attemptNumber}|${data.cid}`,
+                                {
+                                    coreState: JSON.parse(
+                                        data.coreState,
+                                        serializedComponentsReviver,
+                                    ),
+                                    rendererState: JSON.parse(
+                                        data.rendererState,
+                                        serializedComponentsReviver,
+                                    ),
+                                    coreInfo: JSON.parse(
+                                        data.coreInfo,
+                                        serializedComponentsReviver,
+                                    ),
+                                    saveId: data.saveId,
+                                },
+                            );
+                        }
+
+                        postMessage({
+                            messageType: "resetPage",
+                            coreId: this.coreId,
+                            args: {
+                                changedOnDevice: data.device,
+                                newCid: data.cid,
+                                newAttemptNumber: Number(data.attemptNumber),
+                            },
+                        });
+                    } else {
+                        // if the cid changed without the attemptNumber changing, something went wrong
+                        postMessage({
+                            messageType: "inErrorState",
+                            coreId: this.coreId,
+                            args: {
+                                errMsg: "Content changed unexpectedly!",
+                            },
+                        });
+                    }
+                }
             }
+            // TODO: send message so that UI can show changes have been synchronized
+
+            // console.log(">>>>recordContentInteraction data",data)
         }
-
-        // TODO: send message so that UI can show changes have been synchronized
-
-        // console.log(">>>>recordContentInteraction data",data)
     }
 
     saveSubmissions({ pageCreditAchieved, suppressToast = false }) {
@@ -12924,124 +12944,129 @@ export default class Core {
 
         console.log("payload for save credit for item", payload);
 
-        axios
-            .post(this.apiURLs.saveCreditForItem, payload)
-            .then((resp) => {
-                // console.log('>>>>saveCreditForItem resp', resp.data);
+        if (this.apiURLs.postMessages) {
+            // do nothing, saving credit is combined with saving page state in the SPLICE api
+            // that is implemented by Runestone
+        } else {
+            axios
+                .post(this.apiURLs.saveCreditForItem, payload)
+                .then((resp) => {
+                    // console.log('>>>>saveCreditForItem resp', resp.data);
 
-                if (resp.status === null) {
-                    postMessage({
-                        messageType: "sendToast",
-                        coreId: this.coreId,
-                        args: {
-                            message: `Credit not saved due to error.  Are you connected to the internet?`,
-                            alertType: "error",
-                        },
-                    });
-                } else if (!resp.data.success) {
-                    postMessage({
-                        messageType: "sendToast",
-                        coreId: this.coreId,
-                        args: {
-                            message: `Credit not saved due to error: ${resp.data.message}`,
-                            alertType: "error",
-                        },
-                    });
-                } else {
-                    let data = resp.data;
-
-                    postMessage({
-                        messageType: "updateCreditAchieved",
-                        coreId: this.coreId,
-                        args: {
-                            creditByItem: data.creditByItem.map(Number),
-                            creditForAssignment: Number(
-                                data.creditForAssignment,
-                            ),
-                            creditForAttempt: Number(data.creditForAttempt),
-                            showCorrectness: data.showCorrectness === "1",
-                            totalPointsOrPercent: Number(
-                                data.totalPointsOrPercent,
-                            ),
-                        },
-                    });
-
-                    //TODO: need type warning (red but doesn't hang around)
-                    if (data.viewedSolution) {
-                        if (!suppressToast) {
-                            postMessage({
-                                messageType: "sendToast",
-                                coreId: this.coreId,
-                                args: {
-                                    message:
-                                        "No credit awarded since solution was viewed.",
-                                    alertType: "info",
-                                },
-                            });
-                        }
-                    }
-                    if (data.timeExpired) {
-                        if (!suppressToast) {
-                            postMessage({
-                                messageType: "sendToast",
-                                coreId: this.coreId,
-                                args: {
-                                    message:
-                                        "No credit awarded since the time allowed has expired.",
-                                    alertType: "info",
-                                },
-                            });
-                        }
-                    }
-                    if (data.pastDueDate) {
-                        if (!suppressToast) {
-                            postMessage({
-                                messageType: "sendToast",
-                                coreId: this.coreId,
-                                args: {
-                                    message:
-                                        "No credit awarded since the due date has passed.",
-                                    alertType: "info",
-                                },
-                            });
-                        }
-                    }
-                    if (data.exceededAttemptsAllowed) {
-                        if (!suppressToast) {
-                            postMessage({
-                                messageType: "sendToast",
-                                coreId: this.coreId,
-                                args: {
-                                    message:
-                                        "No credit awarded since no more attempts are allowed.",
-                                    alertType: "info",
-                                },
-                            });
-                        }
-                    }
-                    if (data.databaseError) {
+                    if (resp.status === null) {
                         postMessage({
                             messageType: "sendToast",
                             coreId: this.coreId,
                             args: {
-                                message:
-                                    "Credit not saved due to database error.",
+                                message: `Credit not saved due to error.  Are you connected to the internet?`,
                                 alertType: "error",
                             },
                         });
+                    } else if (!resp.data.success) {
+                        postMessage({
+                            messageType: "sendToast",
+                            coreId: this.coreId,
+                            args: {
+                                message: `Credit not saved due to error: ${resp.data.message}`,
+                                alertType: "error",
+                            },
+                        });
+                    } else {
+                        let data = resp.data;
+
+                        postMessage({
+                            messageType: "updateCreditAchieved",
+                            coreId: this.coreId,
+                            args: {
+                                creditByItem: data.creditByItem.map(Number),
+                                creditForAssignment: Number(
+                                    data.creditForAssignment,
+                                ),
+                                creditForAttempt: Number(data.creditForAttempt),
+                                showCorrectness: data.showCorrectness === "1",
+                                totalPointsOrPercent: Number(
+                                    data.totalPointsOrPercent,
+                                ),
+                            },
+                        });
+
+                        //TODO: need type warning (red but doesn't hang around)
+                        if (data.viewedSolution) {
+                            if (!suppressToast) {
+                                postMessage({
+                                    messageType: "sendToast",
+                                    coreId: this.coreId,
+                                    args: {
+                                        message:
+                                            "No credit awarded since solution was viewed.",
+                                        alertType: "info",
+                                    },
+                                });
+                            }
+                        }
+                        if (data.timeExpired) {
+                            if (!suppressToast) {
+                                postMessage({
+                                    messageType: "sendToast",
+                                    coreId: this.coreId,
+                                    args: {
+                                        message:
+                                            "No credit awarded since the time allowed has expired.",
+                                        alertType: "info",
+                                    },
+                                });
+                            }
+                        }
+                        if (data.pastDueDate) {
+                            if (!suppressToast) {
+                                postMessage({
+                                    messageType: "sendToast",
+                                    coreId: this.coreId,
+                                    args: {
+                                        message:
+                                            "No credit awarded since the due date has passed.",
+                                        alertType: "info",
+                                    },
+                                });
+                            }
+                        }
+                        if (data.exceededAttemptsAllowed) {
+                            if (!suppressToast) {
+                                postMessage({
+                                    messageType: "sendToast",
+                                    coreId: this.coreId,
+                                    args: {
+                                        message:
+                                            "No credit awarded since no more attempts are allowed.",
+                                        alertType: "info",
+                                    },
+                                });
+                            }
+                        }
+                        if (data.databaseError) {
+                            postMessage({
+                                messageType: "sendToast",
+                                coreId: this.coreId,
+                                args: {
+                                    message:
+                                        "Credit not saved due to database error.",
+                                    alertType: "error",
+                                },
+                            });
+                        }
                     }
-                }
-            })
-            .catch((e) => {
-                postMessage({
-                    messageType: "sendToast",
-                    coreId: this.coreId,
-                    args: {
-                        message: `Credit not saved due to error: ${e.message}`,
-                        alertType: "error",
-                    },
+                })
+                .catch((e) => {
+                    postMessage({
+                        messageType: "sendToast",
+                        coreId: this.coreId,
+                        args: {
+                            message: `Credit not saved due to error: ${e.message}`,
+                            alertType: "error",
+                        },
+                    });
                 });
-            });
+        }
     }
 
     // submitResponseCallBack(results) {
