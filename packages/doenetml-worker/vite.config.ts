@@ -10,7 +10,8 @@ export default defineConfig({
         lib: {
             entry: "src/index.ts",
             fileName: "CoreWorker",
-            formats: ["es"],
+            formats: ["iife"],
+            name: "doenetmlWorker"
         },
         rollupOptions: {
             // @ts-ignore

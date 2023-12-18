@@ -718,6 +718,8 @@ export default function PageViewer(props) {
     function startCore() {
         console.log(`send message to create core ${pageNumber}`);
 
+        // TODO - for compatiblity with firefox we probably want to make this "classic" instead
+        // of "module" see - https://github.com/Doenet/DoenetML/pull/69
         coreWorker.current = new Worker(
             new URL("doenetml-worker/CoreWorker.js", window.location),
             {
@@ -775,6 +777,8 @@ export default function PageViewer(props) {
             return;
         }
 
+        // TODO - for compatiblity with firefox we probably want to make this "classic" instead
+        // of "module" see - https://github.com/Doenet/DoenetML/pull/69
         let sWorker = new Worker("core/utils/initialState.js", {
             type: "module",
         });
