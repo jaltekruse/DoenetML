@@ -61,6 +61,7 @@ export function DoenetML({
     cid,
     activityId = "",
     userId,
+    noMathJax = false,
     attemptNumber = 1,
     requestedVariantIndex,
     updateCreditAchievedCallback,
@@ -151,6 +152,47 @@ export function DoenetML({
         keyboard = <VirtualKeyboard />;
     }
 
+    let innerViewer = (
+        <>
+            <ActivityViewer
+                doenetML={doenetML}
+                updateDataOnContentChange={updateDataOnContentChange}
+                flags={flags}
+                cid={cid}
+                activityId={activityId}
+                userId={userId}
+                attemptNumber={attemptNumber}
+                requestedVariantIndex={variantIndex.current}
+                updateCreditAchievedCallback={updateCreditAchievedCallback}
+                updateActivityStatusCallback={updateActivityStatusCallback}
+                updateAttemptNumber={updateAttemptNumber}
+                pageChangedCallback={pageChangedCallback}
+                paginate={paginate}
+                showFinishButton={showFinishButton}
+                cidChangedCallback={cidChangedCallback}
+                checkIfCidChanged={checkIfCidChanged}
+                setActivityAsCompleted={setActivityAsCompleted}
+                setIsInErrorState={setIsInErrorState}
+                apiURLs={apiURLs}
+                generatedVariantCallback={generatedVariantCallback}
+                setErrorsAndWarningsCallback={setErrorsAndWarningsCallback}
+                forceDisable={forceDisable}
+                forceShowCorrectness={forceShowCorrectness}
+                forceShowSolution={forceShowSolution}
+                forceUnsuppressCheckwork={forceUnsuppressCheckwork}
+                location={location}
+                navigate={navigate}
+                idsIncludeActivityId={idsIncludeActivityId}
+                linkSettings={linkSettings}
+                addBottomPadding={addBottomPadding}
+                scrollableContainer={scrollableContainer}
+                darkMode={darkMode}
+            />
+            <div className="before-keyboard" />
+            {keyboard}
+        </>
+    );
+    console.log(noMathJax);
     return (
         <ChakraProvider
             theme={theme}
@@ -158,56 +200,18 @@ export function DoenetML({
             disableGlobalStyle
         >
             <RecoilRoot>
-                <MathJaxContext
-                    version={2}
-                    config={mathjaxConfig}
-                    onStartup={(mathJax) =>
-                        (mathJax.Hub.processSectionDelay = 0)
-                    }
-                >
-                    <ActivityViewer
-                        doenetML={doenetML}
-                        updateDataOnContentChange={updateDataOnContentChange}
-                        flags={flags}
-                        cid={cid}
-                        activityId={activityId}
-                        userId={userId}
-                        attemptNumber={attemptNumber}
-                        requestedVariantIndex={variantIndex.current}
-                        updateCreditAchievedCallback={
-                            updateCreditAchievedCallback
-                        }
-                        updateActivityStatusCallback={
-                            updateActivityStatusCallback
-                        }
-                        updateAttemptNumber={updateAttemptNumber}
-                        pageChangedCallback={pageChangedCallback}
-                        paginate={paginate}
-                        showFinishButton={showFinishButton}
-                        cidChangedCallback={cidChangedCallback}
-                        checkIfCidChanged={checkIfCidChanged}
-                        setActivityAsCompleted={setActivityAsCompleted}
-                        setIsInErrorState={setIsInErrorState}
-                        apiURLs={apiURLs}
-                        generatedVariantCallback={generatedVariantCallback}
-                        setErrorsAndWarningsCallback={
-                            setErrorsAndWarningsCallback
-                        }
-                        forceDisable={forceDisable}
-                        forceShowCorrectness={forceShowCorrectness}
-                        forceShowSolution={forceShowSolution}
-                        forceUnsuppressCheckwork={forceUnsuppressCheckwork}
-                        location={location}
-                        navigate={navigate}
-                        idsIncludeActivityId={idsIncludeActivityId}
-                        linkSettings={linkSettings}
-                        addBottomPadding={addBottomPadding}
-                        scrollableContainer={scrollableContainer}
-                        darkMode={darkMode}
-                    />
-                    <div className="before-keyboard" />
-                    {keyboard}
-                </MathJaxContext>
+                {noMathJax ? (
+                    <div>{innerViewer}</div>
+                ) : (
+                    <MathJaxContext
+                        version={3}
+                        config={mathjaxConfig}
+                        renderMode="pre"
+                        typesettingOptions={{ fn: "tex2chtml" }}
+                    >
+                        {innerViewer}
+                    </MathJaxContext>
+                )}
             </RecoilRoot>
         </ChakraProvider>
     );

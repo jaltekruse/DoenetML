@@ -720,9 +720,14 @@ export default function TextInput(props) {
     let label = SVs.label;
     if (SVs.labelHasLatex) {
         label = (
-            <MathJax hideUntilTypeset={"first"} inline dynamic>
-                {label}
-            </MathJax>
+            <MathJax
+                renderMode="pre"
+                typesettingOptions={{ fn: "tex2chtml" }}
+                hideUntilTypeset={"first"}
+                inline
+                dynamic
+                text={label}
+            />
         );
     }
     if (SVs.expanded) {

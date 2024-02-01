@@ -14,9 +14,14 @@ export default React.memo(function MathList(props) {
             <React.Fragment key={id}>
                 <a name={id} />
                 <span id={id}>
-                    <MathJax hideUntilTypeset={"first"} inline dynamic>
-                        {"\\(" + SVs.latex + "\\)"}
-                    </MathJax>
+                    <MathJax
+                        renderMode="pre"
+                        typesettingOptions={{ fn: "tex2chtml" }}
+                        hideUntilTypeset={"first"}
+                        inline
+                        dynamic
+                        text={SVs.latex}
+                    />
                 </span>
             </React.Fragment>
         );
