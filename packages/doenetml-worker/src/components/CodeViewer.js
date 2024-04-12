@@ -302,7 +302,6 @@ export default class CodeViewer extends BlockComponent {
                 useEssentialOrDefaultValue: { codeChanged: true },
             }),
             inverseDefinition({ desiredStateVariableValues }) {
-                console.log("inverse def of codeChanged in CodeViewer, codeChanged is:", desiredStateVariableValues.codeChanged);
                 return {
                     success: true,
                     instructions: [

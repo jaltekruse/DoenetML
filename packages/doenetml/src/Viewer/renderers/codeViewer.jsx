@@ -13,7 +13,6 @@ export default React.memo(function CodeViewer(props) {
         props,
         false,
     );
-    console.log(JSON.parse(JSON.stringify(SVs)));
 
     const [variants, setVariants] = useState({
         index: 1,
