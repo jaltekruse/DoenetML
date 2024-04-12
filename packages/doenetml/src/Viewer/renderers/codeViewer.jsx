@@ -132,7 +132,7 @@ export default React.memo(function CodeViewer(props) {
             >
                 <DoenetML
                     doenetML={SVs.doenetML}
-                    noMathJax={true}
+                    noNewMathJaxContext={true}
                     flags={{
                         showCorrectness: true,
                         solutionDisplayMode: "button",

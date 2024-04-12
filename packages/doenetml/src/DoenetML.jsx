@@ -61,7 +61,6 @@ export function DoenetML({
     cid,
     activityId = "",
     userId,
-    noMathJax = false,
     attemptNumber = 1,
     requestedVariantIndex,
     updateCreditAchievedCallback,
@@ -90,6 +89,10 @@ export function DoenetML({
     linkSettings,
     scrollableContainer,
     darkMode,
+    // Only one MathJaxContext is allowed to be in the react component tree
+    // but we nest DoenetML inside of itself when there is a codeEditor
+    // with a preview, keep this the default value most of the time
+    noNewMathJaxContext = false,
 }) {
     const thisPropSet = [
         doenetML,
@@ -192,7 +195,6 @@ export function DoenetML({
             {keyboard}
         </>
     );
-    console.log(noMathJax);
     return (
         <ChakraProvider
             theme={theme}
@@ -200,7 +202,7 @@ export function DoenetML({
             disableGlobalStyle
         >
             <RecoilRoot>
-                {noMathJax ? (
+                {noNewMathJaxContext ? (
                     <div>{innerViewer}</div>
                 ) : (
                     <MathJaxContext
