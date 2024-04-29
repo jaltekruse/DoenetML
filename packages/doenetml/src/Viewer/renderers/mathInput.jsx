@@ -356,9 +356,7 @@ export default function MathInput(props) {
     let label = SVs.label;
     if (SVs.labelHasLatex) {
         label = (
-            <MathJax hideUntilTypeset={"first"} inline dynamic>
-                {label}
-            </MathJax>
+            <MathJax hideUntilTypeset={"first"} inline dynamic text={label} />
         );
     }
     return (
