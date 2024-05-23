@@ -4,6 +4,10 @@ const withNextra = nextraConfig({
     themeConfig: "./theme.config.tsx",
     defaultShowCopyCode: true,
     latex: true,
+    images: {
+        unoptimized: true,
+    },
+    output: "export"
 });
 
 
